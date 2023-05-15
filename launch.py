@@ -366,6 +366,5 @@ def start():
 
 
 if __name__ == "__main__":
-    args.reinstall_torch = True
     prepare_environment()
     start()
