@@ -1,3 +1,6 @@
 [submodule "extensions/sd-webui-controlnet"]
 	path = extensions/sd-webui-controlnet
 	url = https://github.com/Mikubill/sd-webui-controlnet
+[submodule "extensions/ultimate-upscale-for-automatic1111"]
+	path = extensions/ultimate-upscale-for-automatic1111
+	url = https://github.com/Coyote-A/ultimate-upscale-for-automatic1111

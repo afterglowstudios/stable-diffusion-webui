@@ -15,10 +15,7 @@ pip install aioprometheus[starlette]
 
 # download models from gcp if needed, it can take while on a fresh disk.
 echo "Checking model downloads..."
-./rclone-v1.62.2-linux-amd64/rclone copy gs://ag-diffusion/models/Stable-diffusion models/Stable-diffusion --progress --config rclone-v1.62.2-linux-amd64/rclone.conf 
-./rclone-v1.62.2-linux-amd64/rclone copy gs://ag-diffusion/models/lora models/Lora --progress --config rclone-v1.62.2-linux-amd64/rclone.conf 
-./rclone-v1.62.2-linux-amd64/rclone copy gs://ag-diffusion/extensions/sd-webui-controlnet/models extensions/sd-webui-controlnet/models --progress --config rclone-v1.62.2-linux-amd64/rclone.conf 
-./rclone-v1.62.2-linux-amd64/rclone copy gs://ag-diffusion/embeddings embeddings --progress --config rclone-v1.62.2-linux-amd64/rclone.conf 
+./rclone-v1.62.2-linux-amd64/rclone copy gs://ag-diffusion/stable-diffusion-webui . --progress --config rclone-v1.62.2-linux-amd64/rclone.conf 
 echo "Checking model downloads: complete"
 
 # Install directory without trailing slash
@@ -32,7 +29,7 @@ source ~/.bashrc
 
 # Commandline arguments for webui.py, for example: export COMMANDLINE_ARGS="--medvram --opt-split-attention"
 #loras only seem to load if webui is running? 
-export COMMANDLINE_ARGS="--port 3000 --xformers --api --api-auth $AUTOMATIC1111_AUTH  --gradio-queue --gradio-auth $AUTOMATIC1111_AUTH --api-log --no-half-vae --ckpt /workspace/stable-diffusion-webui/models/Stable-diffusion/deliberate_v2.safetensors --listen --enable-insecure-extension-access"
+export COMMANDLINE_ARGS="--port 3000 --xformers --api --api-auth $AUTOMATIC1111_AUTH --gradio-auth $AUTOMATIC1111_AUTH --api-log --no-half-vae --ckpt /workspace/stable-diffusion-webui/models/Stable-diffusion/deliberate_v2.safetensors --listen --enable-insecure-extension-access"
 echo $COMMANDLINE_ARGS
 
 # python3 executable
