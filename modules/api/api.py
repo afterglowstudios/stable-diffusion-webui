@@ -4,8 +4,11 @@ import time
 import datetime
 import uvicorn
 import gradio as gr
-from aioprometheus import Gauge, Counter,Histogram, MetricsMiddleware
-from aioprometheus.asgi.starlette import metrics
+
+ENABLE_PROMETHEUS = True
+if ENABLE_PROMETHEUS:
+    from aioprometheus import Gauge, Counter,Histogram, MetricsMiddleware
+    from aioprometheus.asgi.starlette import metrics
 
 from threading import Lock
 from io import BytesIO
@@ -169,19 +172,19 @@ class Api:
         self.app = app
 
         #add metrics checking
-        self.app.add_middleware(MetricsMiddleware)
-        self.app.add_route("/metrics", metrics)
+        if ENABLE_PROMETHEUS:
+            self.app.add_middleware(MetricsMiddleware)
+            self.app.add_route("/metrics", metrics)
+            
+            self.start_time = Gauge("start_time", "Start Time")
+            self.start_time.set({'type': "virtual"},time.time())
         
-        self.start_time = Gauge("start_time", "Start Time")
-        self.start_time.set({'type': "virtual"},time.time())
-
-        
-        self.gen_duration_avg = 0
-        self.last_generation_ts = Gauge("last_generation_ts", "Last Generation Timestamp")
-        self.generation_duration_last_seconds = Gauge("generation_duration_last", "Generation Duration Last")
-        self.generation_duration_avg_seconds = Gauge("generation_duration_avg", "Generation Duration Avg")
-        self.generation_duration_total_seconds = Gauge("generation_duration_total", "Generation Duration Total")
-        self.wait_duration_seconds = Gauge("wait_duration", "Wait Duration")
+            self.gen_duration_avg = 0
+            self.last_generation_ts = Gauge("last_generation_ts", "Last Generation Timestamp")
+            self.generation_duration_last_seconds = Gauge("generation_duration_last", "Generation Duration Last")
+            self.generation_duration_avg_seconds = Gauge("generation_duration_avg", "Generation Duration Avg")
+            self.generation_duration_total_seconds = Gauge("generation_duration_total", "Generation Duration Total")
+            self.wait_duration_seconds = Gauge("wait_duration", "Wait Duration")
 
                 
         self.queue_lock = queue_lock
@@ -342,25 +345,26 @@ class Api:
 
         b64images = list(map(encode_pil_to_base64, processed.images)) if send_images else []
 
-        # metrics reporting
-        stop_ts = time.time()
-        
-        gen_dt = stop_ts-genstart_ts
-        avg_smoothing = 0.9
-        if self.gen_duration_avg == 0:
-            self.gen_duration_avg = gen_dt
-        else:
-            self.gen_duration_avg = self.gen_duration_avg*avg_smoothing + (1-avg_smoothing)*gen_dt
-        self.last_generation_ts.set({'type': "virtual"},stop_ts)
-        self.wait_duration_seconds.set({'type': "virtual"},genstart_ts-start_ts)
-        self.generation_duration_avg_seconds.set({'type': "virtual"},self.gen_duration_avg)
-        self.generation_duration_total_seconds.add({'type': "virtual"},gen_dt)
-        self.generation_duration_last_seconds.set({'type': "virtual"},gen_dt)
-
-        # add compute time to the returned response
         info = json.loads(processed.js())
-        info['process_duration_seconds'] = gen_dt
-        info['wait_duration_seconds'] = genstart_ts-start_ts
+
+        # metrics reporting
+        if ENABLE_PROMETHEUS:
+            stop_ts = time.time()        
+            gen_dt = stop_ts-genstart_ts
+            avg_smoothing = 0.9
+            if self.gen_duration_avg == 0:
+                self.gen_duration_avg = gen_dt
+            else:
+                self.gen_duration_avg = self.gen_duration_avg*avg_smoothing + (1-avg_smoothing)*gen_dt
+            self.last_generation_ts.set({'type': "virtual"},stop_ts)
+            self.wait_duration_seconds.set({'type': "virtual"},genstart_ts-start_ts)
+            self.generation_duration_avg_seconds.set({'type': "virtual"},self.gen_duration_avg)
+            self.generation_duration_total_seconds.add({'type': "virtual"},gen_dt)
+            self.generation_duration_last_seconds.set({'type': "virtual"},gen_dt)
+
+            # add compute time to the returned response
+            info['process_duration_seconds'] = gen_dt
+            info['wait_duration_seconds'] = genstart_ts-start_ts
         info = json.dumps(info)
 
         ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -432,23 +436,24 @@ class Api:
 
         # metrics reporting
         stop_ts = time.time()
+        info = json.loads(processed.js())
         
         gen_dt = stop_ts-genstart_ts
         avg_smoothing = 0.9
-        if self.gen_duration_avg == 0:
-            self.gen_duration_avg = gen_dt
-        else:
-            self.gen_duration_avg = self.gen_duration_avg*avg_smoothing + (1-avg_smoothing)*gen_dt
-        self.last_generation_ts.set({'type': "virtual"},stop_ts)
-        self.wait_duration_seconds.set({'type': "virtual"},genstart_ts-start_ts)
-        self.generation_duration_avg_seconds.set({'type': "virtual"},self.gen_duration_avg)
-        self.generation_duration_total_seconds.add({'type': "virtual"},gen_dt)
-        self.generation_duration_last_seconds.set({'type': "virtual"},gen_dt)
+        if ENABLE_PROMETHEUS:
+            if self.gen_duration_avg == 0:
+                self.gen_duration_avg = gen_dt
+            else:
+                self.gen_duration_avg = self.gen_duration_avg*avg_smoothing + (1-avg_smoothing)*gen_dt
+            self.last_generation_ts.set({'type': "virtual"},stop_ts)
+            self.wait_duration_seconds.set({'type': "virtual"},genstart_ts-start_ts)
+            self.generation_duration_avg_seconds.set({'type': "virtual"},self.gen_duration_avg)
+            self.generation_duration_total_seconds.add({'type': "virtual"},gen_dt)
+            self.generation_duration_last_seconds.set({'type': "virtual"},gen_dt)
 
-        # add compute time to the returned response
-        info = json.loads(processed.js())
-        info['process_duration_seconds'] = gen_dt
-        info['wait_duration_seconds'] = genstart_ts-start_ts
+            # add compute time to the returned response
+            info['process_duration_seconds'] = gen_dt
+            info['wait_duration_seconds'] = genstart_ts-start_ts
         info = json.dumps(info)
 
         ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
