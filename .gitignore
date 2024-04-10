@@ -36,3 +36,4 @@ notification.mp3
 /config_states/
 *.log
 *.lock
+/diffusion
